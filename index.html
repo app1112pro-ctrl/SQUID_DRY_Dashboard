@@ -733,7 +733,7 @@ let histRange = 24;
 let mqttClient = null;
 let mqttReconnectDelay = 5000;
 let pauseChartUpdates = false;  // ต้อง declare ก่อนใช้งาน (fix TDZ)
-
+let histAggregatedData = null;  // เก็บข้อมูล aggregated สำหรับ export
 // ════════════════════════════════════════
 //  UI HELPERS
 // ════════════════════════════════════════
@@ -1821,11 +1821,21 @@ function renderHistCharts(rows) {
   histHumiChart.options.plugins.timeBg.zones   = zoneArr;
   histHumiChart.options.plugins.timeBg.seasons = seasonArr;
 
-  histTempChart.data.labels = labels;
-  histTempChart.data.datasets[0].data = airData;
-  histTempChart.data.datasets[1].data = prodData;
-  histTempChart.data.datasets[2].data = humiData;
-  histTempChart.update();
+ histTempChart.data.labels = labels;
+histTempChart.data.datasets[0].data = airData;
+histTempChart.data.datasets[1].data = prodData;
+histTempChart.data.datasets[2].data = humiData;
+
+// *** เก็บข้อมูล aggregated สำหรับ export ***
+histAggregatedData = {
+  labels: labels,
+  air: airData,
+  humi: humiData,
+  prod: prodData,
+  rangeH: rangeH,
+};
+
+histTempChart.update();
 
   histHumiChart.data.labels = labels;
   histHumiChart.data.datasets[0].data = humiData;
@@ -2517,79 +2527,130 @@ function makePDF(title, headers, rows, filename) {
   }
 }
 
-function exportRealtimeCSV() {
-  const labels = buildRtLabels();
-  const rows   = [];
-  rows.push(['เวลา','อุณหภูมิห้อง1 (°C)','ความชื้นห้อง1 (%RH)','อุณหภูมิห้อง2 (°C)'].join(','));
-  labels.forEach((lbl, i) => {
-    const air  = rtAllData.air[i];
-    const humi = rtAllData.humi[i];
-    const prod = rtAllData.prod[i];
-    if (air !== null || humi !== null || prod !== null) {
-      rows.push([
-        lbl,
-        air  !== null ? air.toFixed(1)  : '',
-        humi !== null ? humi.toFixed(1) : '',
-        prod !== null ? prod.toFixed(1) : '',
-      ].join(','));
-    }
-  });
-  if (rows.length <= 1) { showToast('ไม่มีข้อมูลวันนี้','info'); return; }
-  downloadFile('Realtime_' + dateStamp() + '.csv', rows.join('\n'), 'text/csv');
-  logMqtt('[Export] Realtime CSV ' + (rows.length-1) + ' rows', '#34d399');
-}
-
 async function exportHistoryCSV() {
   const btn = document.querySelector('.export-btn.csv[onclick="exportHistoryCSV()"]');
-  if (btn) { btn.textContent = 'กำลังโหลด...'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'กำลังสร้าง...'; btn.disabled = true; }
+  
   try {
-    const res  = await fetch(CFG.sheetsUrl);
-    const text = await res.text();
-    const lines = text.trim().split('\n');
-    const cutoff = Date.now() - histRange * 3600000;
-    const hdrs = lines[0];
-    const dataRows = lines.slice(1).filter(line => {
-      const ts = new Date(line.split(',')[0].replace(/^"|"$/g,'').replace(' ','T'));
-      return !isNaN(ts) && ts >= cutoff;
+    if (!histAggregatedData || !histAggregatedData.labels.length) {
+      showToast('ไม่มีข้อมูลในกราฟ กรุณาโหลดข้อมูลก่อน', 'warn');
+      return;
+    }
+    
+    const { labels, air, humi, prod, rangeH } = histAggregatedData;
+    const rows = [];
+    
+    // Header ภาษาไทย
+    rows.push(['เวลา', 'อุณหภูมิห้อง1 (°C)', 'ความชื้นห้อง1 (%RH)', 'อุณหภูมิห้อง2 (°C)'].join(','));
+    
+    // Data rows
+    labels.forEach((lbl, i) => {
+      const a = air[i];
+      const h = humi[i];
+      const p = prod[i];
+      
+      // ข้าม null ทั้งหมด
+      if (a === null && h === null && p === null) return;
+      
+      rows.push([
+        lbl,
+        a !== null && !isNaN(a) ? a.toFixed(1) : '',
+        h !== null && !isNaN(h) ? h.toFixed(1) : '',
+        p !== null && !isNaN(p) ? p.toFixed(1) : '',
+      ].join(','));
     });
-    const csv = [hdrs, ...dataRows].join('\n');
-    const rangeLabel = histRange<=24?'24h':histRange<=72?'3d':histRange<=168?'7d':histRange<=720?'30d':histRange<=4380?'6m':'12m';
-    downloadFile('RawData_' + rangeLabel + '_' + dateStamp() + '.csv', csv, 'text/csv');
-    logMqtt('[Export] History CSV ' + dataRows.length + ' rows', '#34d399');
+    
+    if (rows.length <= 1) {
+      showToast('ไม่มีข้อมูลที่จะ export', 'info');
+      return;
+    }
+    
+    const rangeLabel = rangeH <= 24 ? '24h' 
+                     : rangeH <= 72 ? '3d' 
+                     : rangeH <= 168 ? '7d' 
+                     : rangeH <= 720 ? '30d' 
+                     : rangeH <= 4380 ? '6m' 
+                     : '12m';
+    
+    downloadFile('History_Aggregated_' + rangeLabel + '_' + dateStamp() + '.csv', rows.join('\n'), 'text/csv');
+    logMqtt('[Export] CSV exported ' + (rows.length - 1) + ' aggregated rows (' + rangeLabel + ')', '#34d399');
+    showToast('Export CSV สำเร็จ', 'success');
+    
   } catch(e) {
     showToast('Export ไม่สำเร็จ: ' + e.message, 'error');
+    logMqtt('[Export] CSV error: ' + e.message, '#f87171');
+  } finally {
+    if (btn) { 
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9,14 12,17 15,14"/></svg>CSV'; 
+      btn.disabled = false; 
+    }
   }
-  if (btn) { btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9,14 12,17 15,14"/></svg>CSV'; btn.disabled = false; }
 }
 
 async function exportHistoryPDF() {
   const btn = document.querySelector('.export-btn.pdf[onclick="exportHistoryPDF()"]');
   if (btn) { btn.textContent = 'กำลังสร้าง...'; btn.disabled = true; }
+  
   try {
-    const res  = await fetch(CFG.sheetsUrl);
-    const text = await res.text();
-    const lines = text.trim().split('\n');
-    const hdrs  = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
-    const cutoff = Date.now() - histRange * 3600000;
-    const rows = lines.slice(1)
-      .filter(line => {
-        const ts = new Date(line.split(',')[0].replace(/^"|"$/g,'').replace(' ','T'));
-        return !isNaN(ts) && ts >= cutoff;
-      })
-      .slice(-200)
-      .map(line => line.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-    const rangeLabel = histRange<=24?'24 ชั่วโมง':histRange<=72?'3 วัน':histRange<=168?'7 วัน':histRange<=720?'30 วัน':histRange<=4380?'6 เดือน':'12 เดือน';
+    if (!histAggregatedData || !histAggregatedData.labels.length) {
+      showToast('ไม่มีข้อมูลในกราฟ กรุณาโหลดข้อมูลก่อน', 'warn');
+      return;
+    }
+    
+    const { labels, air, humi, prod, rangeH } = histAggregatedData;
+    const rows = [];
+    
+    // สร้าง rows
+    labels.forEach((lbl, i) => {
+      const a = air[i];
+      const h = humi[i];
+      const p = prod[i];
+      
+      // ข้าม null ทั้งหมด
+      if (a === null && h === null && p === null) return;
+      
+      rows.push([
+        lbl,
+        a !== null && !isNaN(a) ? a.toFixed(1) : '-',
+        h !== null && !isNaN(h) ? h.toFixed(1) : '-',
+        p !== null && !isNaN(p) ? p.toFixed(1) : '-',
+      ]);
+    });
+    
+    if (rows.length === 0) {
+      showToast('ไม่มีข้อมูลที่จะ export', 'info');
+      return;
+    }
+    
+    const rangeLabel = rangeH <= 24 ? '24 Hours' 
+                     : rangeH <= 72 ? '3 Days' 
+                     : rangeH <= 168 ? '7 Days' 
+                     : rangeH <= 720 ? '30 Days' 
+                     : rangeH <= 4380 ? '6 Months' 
+                     : '12 Months';
+    
+    // Headers ภาษาอังกฤษ (jsPDF ไม่รองรับไทย)
+    const headers = ['Time', 'Temp Room1 (C)', 'Humidity Room1 (%)', 'Temp Room2 (C)'];
+    
     makePDF(
-      'Drying Monitor — ข้อมูลสะสม ' + rangeLabel,
-      hdrs.slice(0,10),
-      rows.map(r => r.slice(0,10)),
-      'History_' + dateStamp() + '.pdf'
+      'SQUID DRY 2026 - History Data (' + rangeLabel + ')',
+      headers,
+      rows,
+      'History_' + rangeLabel.replace(/\s/g, '') + '_' + dateStamp() + '.pdf'
     );
-    logMqtt('[Export] History PDF ' + rows.length + ' rows', '#34d399');
+    
+    logMqtt('[Export] PDF exported ' + rows.length + ' aggregated rows (' + rangeLabel + ')', '#34d399');
+    showToast('Export PDF สำเร็จ', 'success');
+    
   } catch(e) {
     showToast('Export ไม่สำเร็จ: ' + e.message, 'error');
+    logMqtt('[Export] PDF error: ' + e.message, '#f87171');
+  } finally {
+    if (btn) { 
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>PDF'; 
+      btn.disabled = false; 
+    }
   }
-  if (btn) { btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>PDF'; btn.disabled = false; }
 }
 
 // ════════════════════════════════════════

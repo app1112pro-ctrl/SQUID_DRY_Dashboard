@@ -710,6 +710,11 @@ const CFG = {
   mqttUser:   'ASTM50996',
   mqttPass:   'ASTM509964Ds',
   mqttClient: 'WebDash_' + Math.random().toString(36).slice(2,7),
+    // Location Config
+  locationName: 'บ้านเพ อ.เมือง · จ.ระยอง',
+  locationLat:  12.623387687025879,
+  locationLon:  101.4307925089054,
+  
   gasWeatherUrl: 'https://script.google.com/macros/s/AKfycbw6g9gaHBuQ1_QlgG92i2rMHVrgBUEn6-TA7p2xydHVnGE8wLWVix0V_5Zv5YXo7paOnw/exec',
   sheetsUrl:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=0&single=true&output=csv',
   dailyUrl:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=1277158375&single=true&output=csv',
@@ -941,7 +946,7 @@ function updateWeatherUI() {
   $('w-temp').textContent = weatherState.temp + '°';
   $('w-humi').textContent = weatherState.humi + '%';
   $('w-updated').textContent = 'อัปเดต: ' + weatherState.time + ' น.';
-  $('w-location').textContent = 'อรรถรส จ.ระยอง';
+  $('w-location').textContent = CFG.locationName || 'อรรถรส จ.ระยอง';
   $('last-weather').textContent = weatherState.time;
   const fl = $('w-feels'); if (fl && weatherState.feelsLike) fl.textContent = weatherState.feelsLike + '°C';
   const wd = $('w-wind');  if (wd && weatherState.wind) wd.textContent = weatherState.wind + ' km/h ' + (weatherState.windDir||'');
@@ -2156,8 +2161,8 @@ async function updateLatestStateFromSheets() {
 //  WEATHER
 // ════════════════════════════════════════
 async function fetchWeatherDirect() {
-  const LAT = 12.623387687025879;
-  const LON = 101.4307925089054;
+  const LAT = CFG.locationLat  || 12.623387687025879;
+  const LON = CFG.locationLon  || 101.4307925089054;
 
   const sources = [
     () => fetchViaAppsScript(LAT, LON),

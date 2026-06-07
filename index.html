@@ -703,7 +703,7 @@
 // ════════════════════════════════════════
 const CFG = {
   mqttHost:   'f7df4fd55ada408e8ecba309a8edb487.s1.eu.hivemq.cloud',
-  mqttPort:   8883,           // WebSocket TLS
+  mqttPort:   8884,           // WebSocket TLS
   mqttUser:   'ASTM50996',
   mqttPass:   'ASTM509964Ds',
   mqttClient: 'WebDash_' + Math.random().toString(36).slice(2,7),
@@ -2138,7 +2138,7 @@ async function updateLatestStateFromSheets() {
     d.max_temp     = _s(iMaxT);
 
     const airOK  = d.temp_Room1  && d.temp_Room1  !== 'ERR' && !isNaN(parseFloat(d.temp_Room1));
-    const humiOK = d.humidity_Room1 && d.humidity  !== 'ERR' && !isNaN(parseFloat(d.humidity_Room1));
+    const humiOK = d.humidity_Room1 && d.humidity_Room1 !== 'ERR' && !isNaN(parseFloat(d.humidity_Room1));
     const prodOK = d.temp_Room2 && d.temp_Room2 !== 'ERR' && !isNaN(parseFloat(d.temp_Room2));
 
     if (!airOK && !humiOK && !prodOK) {

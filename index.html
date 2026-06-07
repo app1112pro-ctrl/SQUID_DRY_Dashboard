@@ -1527,12 +1527,12 @@ function parseAndRenderDaily(csv) {
   const col = name => headers.indexOf(name);
 
   const iDate    = col('date');
-  const iDAir    = col('day_tair_avg');
-  const iDHumi   = col('day_humi_avg');
-  const iDProd   = col('day_tprod_avg');
-  const iNAir    = col('night_tair_avg');
-  const iNHumi   = col('night_humi_avg');
-  const iNProd   = col('night_tprod_avg');
+  const iDAir    = col('day_temp1_avg');
+  const iDHumi   = col('day_humi1_avg');
+  const iDProd   = col('day_temp2_avg');
+  const iNAir    = col('night_temp1_avg');
+  const iNHumi   = col('night_humi1_avg');
+  const iNProd   = col('night_temp2_avg');
   const iProg    = col('program');
 
   const rows = [];

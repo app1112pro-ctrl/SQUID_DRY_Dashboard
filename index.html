@@ -1108,7 +1108,7 @@ function pushRtChart(d) {
   if (!rtChart || pauseChartUpdates) return;
   const toNum = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
   const air  = toNum(d.temp_Room1);
-  const humi = toNum(d.humidity);
+  const humi = toNum(d.humidity_Room1);
   const prod = toNum(d.temp_Room2);
   if (air === null && humi === null && prod === null) return;
   const now = new Date();
@@ -2129,7 +2129,7 @@ async function updateLatestStateFromSheets() {
     const _s = (idx) => idx >= 0 ? (lastRow[idx] || '') : '';
 
     d.temp_Room1     = _s(iAir);
-    d.humidity     = _s(iHumi);
+    d.humidity_Room1 = _s(iHumi);
     d.temp_Room2 = _s(iProd);
     d.program      = _s(iProg);
     d.sys_state    = _s(iState);
@@ -2138,7 +2138,7 @@ async function updateLatestStateFromSheets() {
     d.max_temp     = _s(iMaxT);
 
     const airOK  = d.temp_Room1  && d.temp_Room1  !== 'ERR' && !isNaN(parseFloat(d.temp_Room1));
-    const humiOK = d.humidity  && d.humidity  !== 'ERR' && !isNaN(parseFloat(d.humidity));
+    const humiOK = d.humidity_Room1 && d.humidity  !== 'ERR' && !isNaN(parseFloat(d.humidity_Room1));
     const prodOK = d.temp_Room2 && d.temp_Room2 !== 'ERR' && !isNaN(parseFloat(d.temp_Room2));
 
     if (!airOK && !humiOK && !prodOK) {
@@ -2293,9 +2293,9 @@ async function loadRtByDate() {
     if (lines.length < 2) return;
     const hdrs  = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
     const iTime = hdrs.indexOf('time');
-    const iAir  = hdrs.indexOf('temp_air');
-    const iHumi = hdrs.indexOf('humidity');
-    const iProd = hdrs.indexOf('temp_product');
+    const iAir  = hdrs.indexOf('temp_room1');
+    const iHumi = hdrs.indexOf('humidity_room1')
+    const iProd = hdrs.indexOf('temp_room2')
     if (iTime < 0) return;
     rtAllData.air  = Array(144).fill(null);
     rtAllData.humi = Array(144).fill(null);
@@ -2372,7 +2372,7 @@ async function loadHistByDate() {
     if (lines.length < 2) return;
     const hdrs  = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
     const iTime = hdrs.indexOf('time');
-    const iAir  = hdrs.indexOf('temp_air');
+    const iAir  = hdrs.indexOf('temp_room1');
     const iHumi = hdrs.indexOf('humidity');
     const iProd = hdrs.indexOf('temp_product');
     const iProg = hdrs.indexOf('program');
@@ -2449,16 +2449,16 @@ function connectMQTT() {
     $('conn-dot').className = 'conn-dot on';
     $('conn-label').textContent = 'เชื่อมต่อแล้ว';
     logMqtt('Connected to HiveMQ Cloud', '#34d399');
-    mqttClient.subscribe('squid_dry/data');
-    mqttClient.subscribe('squid_dry/status');
+    mqttClient.subscribe('dryer/data');
+    mqttClient.subscribe('dryer/status');
     logMqtt('Subscribed: squid_dry/data, squid_dry/status', '#5a7090');
   });
 
   mqttClient.on('message', (topic, payload) => {
     try {
       const d = JSON.parse(payload.toString());
-      if (topic === 'squid_dry/data')   scheduleUIUpdate(d);
-      if (topic === 'squid_dry/status') scheduleUIUpdate(d);
+      if (topic === 'dryer/data')   scheduleUIUpdate(d);
+      if (topic === 'dryer/status') scheduleUIUpdate(d);
     } catch(e) { logMqtt('Parse error: ' + e.message, '#f87171'); }
   });
 

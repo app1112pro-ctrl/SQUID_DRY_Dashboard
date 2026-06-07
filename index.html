@@ -906,9 +906,9 @@ function updateUI(d) {
 
   const _pf = (v, fallback) => { const n = parseFloat(v); return isNaN(n) ? fallback : n; };
   state._lastMqttMs = Date.now();
-  state.air      = _pf(d.temp_air,     state.air);
-  state.humi     = _pf(d.humidity,     state.humi);
-  state.prod     = _pf(d.temp_product, state.prod);
+  state.air      = _pf(d.temp_Room1,     state.air);
+  state.humi     = _pf(d.humidity_Room1,     state.humi);
+  state.prod     = _pf(d.temp_Room2, state.prod);
   state.prog     = d.program  || state.prog;
   state.sysState = d.sys_state|| state.sysState;
   state.targetHumi = parseFloat(d.target_humi) || state.targetHumi;
@@ -1107,9 +1107,9 @@ function drawEndLabels(chart, datasets3) {
 function pushRtChart(d) {
   if (!rtChart || pauseChartUpdates) return;
   const toNum = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
-  const air  = toNum(d.temp_air);
+  const air  = toNum(d.temp_Room1);
   const humi = toNum(d.humidity);
-  const prod = toNum(d.temp_product);
+  const prod = toNum(d.temp_Room2);
   if (air === null && humi === null && prod === null) return;
   const now = new Date();
   const slot = slotIndex(now);
@@ -1587,9 +1587,9 @@ function parseAndRenderHistory(csv) {
   const col = name => headers.indexOf(name);
 
   const iTime  = col('time');
-  const iAir   = col('temp_air');
-  const iHumi  = col('humidity');
-  const iProd  = col('temp_product');
+  const iAir   = col('temp_room1');
+  const iHumi  = col('humidity_room1');
+  const iProd  = col('temp_room2');
   const iProg  = col('program');
   const iState = col('sys_state');
   const iWifi  = col('wifi');
@@ -2021,9 +2021,9 @@ async function loadTodayIntoRtChart(retryCount = 0) {
     const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
     const col   = name => headers.indexOf(name);
     const iTime = col('time');
-    const iAir  = col('temp_air');
-    const iHumi = col('humidity');
-    const iProd = col('temp_product');
+    const iAir  = col('temp_room1');
+    const iHumi = col('humidity_room1');
+    const iProd = col('temp_room2');
     if (iTime < 0) { logMqtt('[Today] ไม่พบ column time', '#f87171'); return; }
 
     const now      = new Date();
@@ -2092,9 +2092,9 @@ async function updateLatestStateFromSheets() {
     const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
     const col = name => headers.indexOf(name);
     const iTime  = col('time');
-    const iAir   = col('temp_air');
-    const iHumi  = col('humidity');
-    const iProd  = col('temp_product');
+    const iAir   = col('temp_room1');
+    const iHumi  = col('humidity_room1');
+    const iProd  = col('temp_room2');
     const iProg  = col('program');
     const iState = col('sys_state');
     const iWifi  = col('wifi');
@@ -2128,18 +2128,18 @@ async function updateLatestStateFromSheets() {
     const d = {};
     const _s = (idx) => idx >= 0 ? (lastRow[idx] || '') : '';
 
-    d.temp_air     = _s(iAir);
+    d.temp_Room1     = _s(iAir);
     d.humidity     = _s(iHumi);
-    d.temp_product = _s(iProd);
+    d.temp_Room2 = _s(iProd);
     d.program      = _s(iProg);
     d.sys_state    = _s(iState);
     d.wifi         = _s(iWifi);
     d.target_humi  = _s(iTHumi);
     d.max_temp     = _s(iMaxT);
 
-    const airOK  = d.temp_air  && d.temp_air  !== 'ERR' && !isNaN(parseFloat(d.temp_air));
+    const airOK  = d.temp_Room1  && d.temp_Room1  !== 'ERR' && !isNaN(parseFloat(d.temp_Room1));
     const humiOK = d.humidity  && d.humidity  !== 'ERR' && !isNaN(parseFloat(d.humidity));
-    const prodOK = d.temp_product && d.temp_product !== 'ERR' && !isNaN(parseFloat(d.temp_product));
+    const prodOK = d.temp_Room2 && d.temp_Room2 !== 'ERR' && !isNaN(parseFloat(d.temp_Room2));
 
     if (!airOK && !humiOK && !prodOK) {
       logMqtt('[Sheets] ไม่พบข้อมูลเซนเซอร์ใน Sheets', '#fbbf24');

@@ -713,10 +713,11 @@ const CFG = {
   locationLon:  101.4307925089054,
   
   gasWeatherUrl: 'https://script.google.com/macros/s/AKfycbw6g9gaHBuQ1_QlgG92i2rMHVrgBUEn6-TA7p2xydHVnGE8wLWVix0V_5Zv5YXo7paOnw/exec',
-  sheetsUrl:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=0&single=true&output=csv',
-  dailyUrl:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=1277158375&single=true&output=csv',
-  monthlyUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=361186813&single=true&output=csv',
-  weatherUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQfgvb_1EPTbTy0KG-kfokJ21iyVbpdpL9S4Li4ER_QvuhG_umWP-EyPysw0E7E2UF8FWbd6XIj-R4N/pub?gid=1375045143&single=true&output=csv',
+  // ✅ FIX: เปลี่ยนมาใช้ Spreadsheet ที่ถูกต้อง (ID: 1Yq3ZLstu2ZQWSCJ_hwHj-UdxBav06rEDy9MD4_lYGMo)
+  sheetsUrl:  'https://docs.google.com/spreadsheets/d/1Yq3ZLstu2ZQWSCJ_hwHj-UdxBav06rEDy9MD4_lYGMo/export?format=csv&gid=0',
+  dailyUrl:   'https://docs.google.com/spreadsheets/d/1Yq3ZLstu2ZQWSCJ_hwHj-UdxBav06rEDy9MD4_lYGMo/export?format=csv&gid=1277158375',
+  monthlyUrl: 'https://docs.google.com/spreadsheets/d/1Yq3ZLstu2ZQWSCJ_hwHj-UdxBav06rEDy9MD4_lYGMo/export?format=csv&gid=361186813',
+  weatherUrl: 'https://docs.google.com/spreadsheets/d/1Yq3ZLstu2ZQWSCJ_hwHj-UdxBav06rEDy9MD4_lYGMo/export?format=csv&gid=1375045143',
 };
 
 // ════════════════════════════════════════
@@ -1527,12 +1528,13 @@ function parseAndRenderDaily(csv) {
   const col = name => headers.indexOf(name);
 
   const iDate    = col('date');
-  const iDAir    = col('day_temp1_avg');
-  const iDHumi   = col('day_humi1_avg');
-  const iDProd   = col('day_temp2_avg');
-  const iNAir    = col('night_temp1_avg');
-  const iNHumi   = col('night_humi1_avg');
-  const iNProd   = col('night_temp2_avg');
+  // ✅ FIX: column names ใน Daily sheet จริงๆ (ย่อ)
+  const iDAir    = col('d_tr1_avg')    !== -1 ? col('d_tr1_avg')    : col('day_temp1_avg');
+  const iDHumi   = col('d_h1_avg')     !== -1 ? col('d_h1_avg')     : col('day_humi1_avg');
+  const iDProd   = col('d_tr2_avg')    !== -1 ? col('d_tr2_avg')    : col('day_temp2_avg');
+  const iNAir    = col('n_tr1_avg')    !== -1 ? col('n_tr1_avg')    : col('night_temp1_avg');
+  const iNHumi   = col('n_h1_avg')     !== -1 ? col('n_h1_avg')     : col('night_humi1_avg');
+  const iNProd   = col('n_tr2_avg')    !== -1 ? col('n_tr2_avg')    : col('night_temp2_avg');
   const iProg    = col('program');
 
   const rows = [];
@@ -2141,8 +2143,10 @@ async function updateLatestStateFromSheets() {
     const humiOK = d.humidity_Room1 && d.humidity_Room1 !== 'ERR' && !isNaN(parseFloat(d.humidity_Room1));
     const prodOK = d.temp_Room2 && d.temp_Room2 !== 'ERR' && !isNaN(parseFloat(d.temp_Room2));
 
+    // ✅ FIX: ถ้าไม่มีข้อมูลเลยสักตัวเดียวค่อย return
+    // prodOK อาจ true เดี่ยวๆ ได้เมื่อ SHT31 ไม่ได้ต่อ (sys_state = SHT31_ERR)
     if (!airOK && !humiOK && !prodOK) {
-      logMqtt('[Sheets] ไม่พบข้อมูลเซนเซอร์ใน Sheets', '#fbbf24');
+      logMqtt('[Sheets] ไม่พบข้อมูลเซนเซอร์ใน Sheets (ทุกตัวเป็น ERR/ว่าง)', '#fbbf24');
       return;
     }
 

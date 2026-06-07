@@ -2373,8 +2373,8 @@ async function loadHistByDate() {
     const hdrs  = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
     const iTime = hdrs.indexOf('time');
     const iAir  = hdrs.indexOf('temp_room1');
-    const iHumi = hdrs.indexOf('humidity');
-    const iProd = hdrs.indexOf('temp_product');
+    const iHumi = hdrs.indexOf('humidity_room1');
+    const iProd = hdrs.indexOf('temp_room2');
     const iProg = hdrs.indexOf('program');
     const iState= hdrs.indexOf('sys_state');
     const iWifi = hdrs.indexOf('wifi');
@@ -2451,7 +2451,7 @@ function connectMQTT() {
     logMqtt('Connected to HiveMQ Cloud', '#34d399');
     mqttClient.subscribe('dryer/data');
     mqttClient.subscribe('dryer/status');
-    logMqtt('Subscribed: squid_dry/data, squid_dry/status', '#5a7090');
+    logMqtt('Subscribed: dryer/data, dryer/status', '#5a7090');
   });
 
   mqttClient.on('message', (topic, payload) => {
